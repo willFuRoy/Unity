@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+<plugin name="com.ingcle.sdk.stat_reyun.ReyunPay" type="2" />
+<plugin name="com.ingcle.sdk.stat_reyun.ReyunGame" type="1" />
+<plugin name="com.ingcle.sdk.stat_reyun.util.ReyunApplicationListener" type="3" />
+</config>

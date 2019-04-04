@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+<plugin name="com.sdk.channel_ingcle_4.IngclePay" type="2" />
+<plugin name="com.sdk.channel_ingcle_4.IngcleGame" type="1" />
+<plugin name="com.sdk.channel_ingcle_4.utils.IngcleApplicationListener" type="3" />
+</config>

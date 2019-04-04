@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorAccent">#e2e4d1</color>
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <string name="app_name">mjxy</string>
+    <string name="checking">检测资源中，不消消耗流量</string>
+    <string name="downing">正在检测游戏数据...</string>
+    <string name="welcome">hello world</string>
+    <style name="AppTheme" parent="android:Theme.Light">
+        <!-- Customize your theme here. -->
+    </style>
+</resources>
