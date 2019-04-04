@@ -1,0 +1,74 @@
+{
+  // 资源主路径:
+  //    对此路径下的所有文件进行遍历，计算所有文件的依赖关系，被依赖次数为1的文件，将不被命名，和引用文件打包在一个ab包里边。
+  //    被依赖次数大于1的文件，将被单独命名，以便其他文件共享此文件（如果不命名，则会被打入到对应的引用文件中，多个ab中都有此资源，造成资源的冗余）。
+  // 格式：list(路径列表)
+  "mainPath": [ "/Art/", "/Prefab/" ],
+
+
+  //跳过打包的路径
+  //    检测文件时跳过部分不需要或者不能打包的文件（通过文件的名称检测是否包含此内容来过滤）
+  //格式：list(文件内容list)
+  "skipPath": [
+    ".svn",
+    ".meta",
+    ".cs",
+    "ArtRes\\Role\\Main"
+  ],
+
+  //单独打包路径：
+  //    不享受依赖关系，单独打成一个ab文件类型（针对文件夹或同一类型的文件）
+  //格式：dic(key:文件夹路径  value:文件后缀名list，当list为空时表示所有文件)
+  "lonelyPath": {
+    "/Art/UI": [ ],
+    "/Art/Role": [ "FBX", "prefab" ], //角色预制件之间不能享受依赖关系，不然会出现加载时找不到对应ab文件
+    "/Art/Role/Player/": [ "anim" ]
+  },
+
+  //单独打包文件名：
+  //    不享受依赖关系， 单独打成一个ab文件名（针对某些固定的文件）
+  //格式：dic(key:文件夹路径 value:文件名list（此查找是模糊查找， 当只输入名字时，可针对该文件夹下所有同名文件设置。如需更详细的查找，则可在文件名前加入文件夹信息。）)
+  "lonelyFilePath": {
+    "/ArtRes/UI/": [ "chuanguan.png", "beijing.png" ],
+    "/ArtRes/Role/": [ "yujie_nan.prefab", "/role/yuehu_nv.prefab" ],
+    "/ArtRes/Role/Player/": [ "yujie_nan.prefab", "/role/yuehu_nv.prefab" ]
+  },
+
+  //多文件打成一个ab：
+  //    常用小文件，打成一个ab， 减少ab读取释放的次数
+  //格式：dic(key:文件夹路径 value: dic(key:扩展名list，value:打包后的名字))
+  "oneABPath": {
+    "/Prefab/Config/CsvCfg/": {
+      "extension": [ "csv" ],
+      "bundleName": "config1.ab"
+    },
+    "/Prefab/Config/": {
+      "extension": [ "json" ],
+      "bundleName": "config2.ab"
+    },
+
+    "/Shaders/": {
+      "extension": [ ],
+      "bundleName": "shaders.ab"
+    }
+  },
+
+  //清理bundleName
+  //    一些文件，虽被多次依赖，但由于文件问题（比如：不能被打成ab、烘焙光照信息单独打包会造成场景黑色等）需要将此类文件和引用文件打包到一起
+
+  //清空路径下所有类型文件
+  //格式：dic(key:文件夹路径 value:后缀名list，可为空，为空时为所有文件)
+  "clearPath": {
+    "/ArtRes/UI/": [ ],
+    "/ArtRes/Role/": [ "FBX", "prefab" ],
+    "/ArtRes/Role/Player/": [ "anim" ]
+  },
+
+  //清空路径下指定文件
+  //格式：dic(key:文件夹路径 value:文件名list,此查找是模糊查找， 当只输入名字时，可针对该文件夹下所有同名文件设置。如需更详细的查找，则可在文件名前加入文件夹信息。)
+  "clearFilePath": {
+    "/ArtRes/UI/": [ "chuanguan.png", "beijing.png" ],
+    "/ArtRes/Role/": [ "yujie_nan.prefab", "/role/yuehu_nv.prefab" ],
+    "/ArtRes/Role/Player/": [ "yujie_nan.prefab", "/role/yuehu_nv.prefab" ]
+  }
+}
