@@ -42,9 +42,9 @@ public class AssetBundleBuilder
         }
         Dictionary<string, object> json = MiniJSON.Json.Deserialize(str) as Dictionary<string, object>;
         List<object> mainPath = json["mainPath"] as List<object>;
-        List<object> lonelyPath = json["lonelyPath"] as List<object>;
-        List<object> lonelyFilesPath = json["lonelyFilePath"] as List<object>;
         Dictionary<string, object> lonelyExtPath = json["lonelyExtPath"] as Dictionary<string, object>;
+        Dictionary<string, object> lonelyFilesPath = json["lonelyFilePath"] as Dictionary<string, object>;
+
         Dictionary<string, object> onePath = json["onePath"] as Dictionary<string, object>;
         Dictionary<string, object> clearPath = json["clearPath"] as Dictionary<string, object>;
         List<object> skipPath = json["skipPath"] as List<object>;
@@ -57,7 +57,7 @@ public class AssetBundleBuilder
         {
             for (int i = 0, max = mainPath.Count; i < max; ++i)
             {
-                CalcMainPathAsset(Application.dataPath + mainPath[i].ToString(), skipPath);
+                GetMainBundleName(Application.dataPath + mainPath[i].ToString(), skipPath);
             }
         }
         //清除只使用了一次的依赖的bundle文件
@@ -70,12 +70,25 @@ public class AssetBundleBuilder
             }
         }
 
-        //获取所有需要单独打包文件下的名字
-        if (lonelyPath != null)
+        //获取所有需要单独打包文件下的后缀
+        if (lonelyExtPath != null)
         {
-            for (int i = 0, max = lonelyPath.Count; i < max; ++i)
+            foreach (var item in lonelyExtPath)
             {
-                GetLonelyBundlName(Application.dataPath + lonelyPath[i].ToString(), skipPath);
+                string path = item.Key;
+                List<object> extensions = item.Value as List<object>;
+                GetLonelyExtBundlName(Application.dataPath + path, extensions, skipPath);
+            }
+        }
+
+        //获取所有需要单独打包文件下的名字
+        if (lonelyFilesPath != null)
+        {
+            foreach (var item in lonelyFilesPath)
+            {
+                string path = item.Key;
+                List<object> files = item.Value as List<object>;
+                GetLonelyFileBundlName(Application.dataPath + path, files);
             }
         }
     }
@@ -184,7 +197,7 @@ public class AssetBundleBuilder
         }
         Debug.LogError("清除完成");
     }
-    static void CalcMainPathAsset(string path, List<object> skipPathList)
+    static void GetMainBundleName(string path, List<object> skipPathList)
     {
         if (Directory.Exists(path))
         {
@@ -303,7 +316,7 @@ public class AssetBundleBuilder
             EditorUtility.ClearProgressBar();
         }
     }
-    static void GetLonelyBundlName(string path, List<object> skipPathList)
+    static void GetLonelyExtBundlName(string path, List<object> extensionList, List<object> skipPathList)
     {
         if (!Directory.Exists(path))
         {
@@ -311,43 +324,98 @@ public class AssetBundleBuilder
             return;
         }
 
-        DirectoryInfo dir = new DirectoryInfo(path);
-
-        FileInfo[] files = dir.GetFiles("*", SearchOption.AllDirectories);
-
-        for (var i = 0; i < files.Length; ++i)
+        if (Directory.Exists(path))
         {
-            FileInfo fileInfo = files[i];
-            if (i % 10 == 0)
-                EditorUtility.DisplayProgressBar("获取名称中", "获取名称中....", 1f * i / files.Length);
+            EditorUtility.DisplayProgressBar("获取名称中", "获取名称中....", 0.0f);
 
-            //需要跳过打包的文件
-            bool skip = false;
-            foreach (var item in skipPathList)
+            DirectoryInfo dir = new DirectoryInfo(path);
+
+            if (extensionList == null || extensionList.Count <= 0)
             {
-                if (fileInfo.FullName.IndexOf(item.ToString()) != -1)
+                FileInfo[] files = dir.GetFiles("*", SearchOption.AllDirectories);
+
+                for (int i = 0; i < files.Length; i++)
                 {
-                    skip = true;
-                    break;
+                    FileInfo fileInfo = files[i];
+                    EditorUtility.DisplayProgressBar("获取名称中", "获取名称中....", 1f * i / files.Length);
+                    bool skip = false;
+                    foreach (var item in skipPathList)
+                    {
+                        if (fileInfo.FullName.IndexOf(item.ToString()) != -1)
+                        {
+                            skip = true;
+                            break;
+                        }
+                    }
+                    if (skip)
+                        continue;
+                    string basePath = "Assets" + fileInfo.FullName.Substring(Application.dataPath.Length);
+                    basePath = basePath.Replace('\\', '/');
+                    string assetName = fileInfo.FullName.Substring(Application.dataPath.Length + 1).Replace('\\', '/');
+                    assetName = assetName.Substring(0, assetName.LastIndexOf('.'));
+                    AddAsset(basePath, assetName + ".ab");
                 }
             }
-            if (skip)
-                continue;
+            else
+            {
+                foreach (var extension in extensionList)
+                {
+                    FileInfo[] files = dir.GetFiles("*" + extension.ToString(), SearchOption.AllDirectories);
 
-            string basePath = "Assets" + fileInfo.FullName.Substring(Application.dataPath.Length);
-            basePath = basePath.Replace('\\', '/');
-            string assetName = fileInfo.FullName.Substring(Application.dataPath.Length + 1).Replace('\\', '/');
-            assetName = assetName.Substring(0, assetName.LastIndexOf('.'));
-            AddAsset(basePath, assetName + ".ab");
+                    for (int i = 0; i < files.Length; i++)
+                    {
+                        FileInfo fileInfo = files[i];
+                        EditorUtility.DisplayProgressBar("获取名称中", "获取名称中....", 1f * i / files.Length);
+                        bool skip = false;
+                        foreach (var item in skipPathList)
+                        {
+                            if (fileInfo.FullName.IndexOf(item.ToString()) != -1)
+                            {
+                                skip = true;
+                                break;
+                            }
+                        }
+                        if (skip)
+                            continue;
+                        string basePath = "Assets" + fileInfo.FullName.Substring(Application.dataPath.Length);
+                        basePath = basePath.Replace('\\', '/');
+                        string assetName = fileInfo.FullName.Substring(Application.dataPath.Length + 1).Replace('\\', '/');
+                        assetName = assetName.Substring(0, assetName.LastIndexOf('.'));
+                        AddAsset(basePath, assetName + ".ab");
+                    }
+                }
+            }
         }
         EditorUtility.ClearProgressBar();
     }
+    static void GetLonelyFileBundlName(string path, List<object> fileList)
+    {
+        if (!Directory.Exists(path) || fileList == null)
+        {
+            UnityEngine.Debug.Log("不存在此目录：" + path);
+            return;
+        }
 
-    /// <summary>
-    /// 添加需要设置名字的文件
-    /// </summary>
-    /// <param name="path"></param>
-    /// <param name="name"></param>
+        if (Directory.Exists(path))
+        {
+            EditorUtility.DisplayProgressBar("获取名称中", "获取名称中....", 0.0f);
+            DirectoryInfo dir = new DirectoryInfo(path);
+            FileInfo[] allFiles = dir.GetFiles("*", SearchOption.AllDirectories);
+            for (int i = 0; i < allFiles.Length; ++i)
+            {
+                FileInfo fileInfo = allFiles[i];
+                EditorUtility.DisplayProgressBar("获取名称中", "获取名称中....", 1f * i / allFiles.Length);
+                string basePath = "Assets" + fileInfo.FullName.Substring(Application.dataPath.Length);
+                basePath = basePath.Replace('\\', '/');
+                object o = fileList.Find(x => basePath.Contains(x.ToString()));
+                if (o == null) continue;
+                string assetName = fileInfo.FullName.Substring(Application.dataPath.Length + 1).Replace('\\', '/');
+                assetName = assetName.Substring(0, assetName.LastIndexOf('.'));
+                AddAsset(basePath, assetName + ".ab");
+            }
+        }
+        EditorUtility.ClearProgressBar();
+    }
     static void AddAsset(string path, string name)
     {
         if (!allAssets.ContainsKey(path))
@@ -355,17 +423,11 @@ public class AssetBundleBuilder
         else
             allAssets[path] = name;
     }
-
-    /// <summary>
-    /// 移除需要设置名字的文件
-    /// </summary>
-    /// <param name="path"></param>
     static void RemoveAsset(string path)
     {
         if (allAssets.ContainsKey(path))
             allAssets.Remove(path);
     }
-
     static bool CheckisStandard(string matpath)
     {
         matpath = matpath.Replace('\\', '/');

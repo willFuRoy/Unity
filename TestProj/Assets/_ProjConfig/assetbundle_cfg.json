@@ -19,7 +19,7 @@
   //单独打包路径：
   //    不享受依赖关系，单独打成一个ab文件类型（针对文件夹或同一类型的文件）
   //格式：dic(key:文件夹路径  value:文件后缀名list，当list为空时表示所有文件)
-  "lonelyPath": {
+  "lonelyExtPath": {
     "/Art/UI": [ ],
     "/Art/Role": [ "FBX", "prefab" ], //角色预制件之间不能享受依赖关系，不然会出现加载时找不到对应ab文件
     "/Art/Role/Player/": [ "anim" ]
@@ -58,7 +58,7 @@
 
   //清空路径下所有类型文件
   //格式：dic(key:文件夹路径 value:后缀名list，可为空，为空时为所有文件)
-  "clearPath": {
+  "clearExtPath": {
     "/ArtRes/UI/": [ ],
     "/ArtRes/Role/": [ "FBX", "prefab" ],
     "/ArtRes/Role/Player/": [ "anim" ]
@@ -70,5 +70,10 @@
     "/ArtRes/UI/": [ "chuanguan.png", "beijing.png" ],
     "/ArtRes/Role/": [ "yujie_nan.prefab", "/role/yuehu_nv.prefab" ],
     "/ArtRes/Role/Player/": [ "yujie_nan.prefab", "/role/yuehu_nv.prefab" ]
-  }
+  },
+  
+  //lua文件转换txt
+  //	由于lua文件不能直接打包，则需将lua文件转化为txt文件（如果本地存放就是txt文件，则可以不处理）
+  //格式：list(文件内容list)
+  "luaPath":["/HF/"]
 }
