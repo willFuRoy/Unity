@@ -16,6 +16,7 @@ public class AssetBundleBuilder
     static Dictionary<string, int> strMultUsedDic;  
     static Dictionary<string, string> allAssets;    //所有需要设置名字的字典
 
+#region 打包工具
     #region Main Method
 
     public static void BuileAssetBundle()
@@ -42,17 +43,29 @@ public class AssetBundleBuilder
         }
         Dictionary<string, object> json = MiniJSON.Json.Deserialize(str) as Dictionary<string, object>;
         List<object> mainPath = json["mainPath"] as List<object>;
+        List<object> skipPath = json["skipPath"] as List<object>;
+        List<object> luaPath = json["luaPath"] as List<object>;
         Dictionary<string, object> lonelyExtPath = json["lonelyExtPath"] as Dictionary<string, object>;
         Dictionary<string, object> lonelyFilesPath = json["lonelyFilePath"] as Dictionary<string, object>;
-
-        Dictionary<string, object> onePath = json["onePath"] as Dictionary<string, object>;
-        Dictionary<string, object> clearPath = json["clearPath"] as Dictionary<string, object>;
-        List<object> skipPath = json["skipPath"] as List<object>;
+        Dictionary<string, object> oneABPath = json["oneABPath"] as Dictionary<string, object>;
+        Dictionary<string, object> clearExtPath = json["clearExtPath"] as Dictionary<string, object>;
+        Dictionary<string, object> clearFilePath = json["clearFilePath"] as Dictionary<string, object>;
         strMultUsed = new List<string>();
         strOnceUsed = new List<string>();
         strMultUsedDic = new Dictionary<string, int>();
         allAssets = new Dictionary<string, string>();
-
+        //特殊处理lua文件
+        if(luaPath != null)
+        {
+            for (int i = 0, maxi = luaPath.Count; i < maxi; ++i)
+            {
+                string lp = Application.dataPath + luaPath[i].ToString();
+                DeleteTxt(lp);
+                ChangeLua2Txt(lp);
+            }
+            AssetDatabase.Refresh();
+        }
+        //获取主路径下所有名字
         if (mainPath != null)
         {
             for (int i = 0, max = mainPath.Count; i < max; ++i)
@@ -69,7 +82,6 @@ public class AssetBundleBuilder
                 EditorUtility.DisplayProgressBar("清理一次依赖文件", "清理一次依赖文件中....", 1f * i / strOnceUsed.Count);
             }
         }
-
         //获取所有需要单独打包文件下的后缀
         if (lonelyExtPath != null)
         {
@@ -80,7 +92,6 @@ public class AssetBundleBuilder
                 GetLonelyExtBundlName(Application.dataPath + path, extensions, skipPath);
             }
         }
-
         //获取所有需要单独打包文件下的名字
         if (lonelyFilesPath != null)
         {
@@ -91,6 +102,42 @@ public class AssetBundleBuilder
                 GetLonelyFileBundlName(Application.dataPath + path, files);
             }
         }
+        //获取打包到一个bundle中的名字
+        if (oneABPath != null)
+        {
+            foreach (var item in oneABPath)
+            {
+                string path = item.Key;
+                List<object> extensions = ((Dictionary<string, object>)item.Value)["extension"] as List<object>;
+                string bundleName = ((Dictionary<string, object>)item.Value)["bundleName"].ToString();
+                GetOneName(Application.dataPath + path, extensions, bundleName);
+            }
+        }
+        //获取所有需要单独打包文件下的后缀
+        if (clearExtPath != null)
+        {
+            foreach (var item in clearExtPath)
+            {
+                string path = item.Key;
+                List<object> extensions = item.Value as List<object>;
+                ClearExtBundlName(Application.dataPath + path, extensions);
+            }
+        }
+        //获取所有需要单独打包文件下的名字
+        if (clearFilePath != null)
+        {
+            foreach (var item in clearFilePath)
+            {
+                string path = item.Key;
+                List<object> files = item.Value as List<object>;
+                ClearFileBundlName(Application.dataPath + path, files);
+            }
+        }
+
+        //开始设置名字
+        SetBundleName();
+
+        EditorUtility.ClearProgressBar();
     }
     #endregion
 
@@ -104,25 +151,18 @@ public class AssetBundleBuilder
     [MenuItem("Assets/AssetBundle/Create Windows AssetBundles", false, 1)]
     static void BuileWindowAssetBundle()
     {
-        string targetPath = Application.dataPath + "/../AssetsResources/";
-        if (!Directory.Exists(targetPath))
-            Directory.CreateDirectory(targetPath);
-
-        BuildPipeline.BuildAssetBundles(targetPath, BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.DeterministicAssetBundle, BuildTarget.StandaloneWindows);
-
+        if (!Directory.Exists(buildOriginPath))
+            Directory.CreateDirectory(buildOriginPath);
+        BuildPipeline.BuildAssetBundles(buildOriginPath, BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.DeterministicAssetBundle, BuildTarget.StandaloneWindows);
         AssetDatabase.Refresh();
-
         CopyFilesToStreaming();
-
         AssetDatabase.Refresh();
-
         EditorUtility.ClearProgressBar();
-
         UnityEngine.Debug.Log("Bundle Build Done");
     }
-    #endif
+#endif
 
-    #if UNITY_ANDROID
+#if UNITY_ANDROID
     /// <summary>
     /// 打包所有设置了 AssetBundle Name的资源
     /// </summary>
@@ -130,31 +170,19 @@ public class AssetBundleBuilder
     [MenuItem("Assets/AssetBundle/Create Android AssetBundles", false, 2)]
     static void BuileAndroidAssetBundle()
     {
-        string targetPath = Application.dataPath + "/../AssetsResources/";
-        if (!Directory.Exists(targetPath))
-            Directory.CreateDirectory(targetPath);
-
-        BuildPipeline.BuildAssetBundles(targetPath, BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.DeterministicAssetBundle, BuildTarget.Android);
-        
-        DirectoryInfo directory = new DirectoryInfo(hfPath);
-        if (directory.Exists)
-        {
-            AssetDatabase.Refresh();
-            DeleteTxt(new DirectoryInfo(hfPath));
-        }
-
-        AssetDatabase.Refresh();
-        
+        if (!Directory.Exists(buildOriginPath))
+            Directory.CreateDirectory(buildOriginPath);
+        BuildPipeline.BuildAssetBundles(buildOriginPath, BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.DeterministicAssetBundle, BuildTarget.Android);       
+        AssetDatabase.Refresh();        
         CopyFilesToStreaming();
-
         AssetDatabase.Refresh();
         EditorUtility.ClearProgressBar();
 
         UnityEngine.Debug.Log("Bundle Build Done");
     }
-    #endif
+#endif
 
-    #if UNITY_IPHONE || UNITY_IOS
+#if UNITY_IPHONE || UNITY_IOS
     /// <summary>
     /// 打包所有设置了 AssetBundle Name的资源
     /// </summary>
@@ -162,29 +190,16 @@ public class AssetBundleBuilder
     [MenuItem("Assets/AssetBundle/Create IOS AssetBundles", false, 3)]
     static void BuileIOSAssetBundle()
     {
-        string targetPath = Application.dataPath + "/../AssetsResources/";
-        if (!Directory.Exists(targetPath))
-            Directory.CreateDirectory(targetPath);
-
-        BuildPipeline.BuildAssetBundles(targetPath, BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.DeterministicAssetBundle, BuildTarget.iOS);
-
-        DirectoryInfo directory = new DirectoryInfo(hfPath);
-        if (directory.Exists)
-        {
-            AssetDatabase.Refresh();
-            DeleteTxt(new DirectoryInfo(hfPath));
-        }
-
+        if (!Directory.Exists(buildOriginPath))
+            Directory.CreateDirectory(buildOriginPath);
+        BuildPipeline.BuildAssetBundles(buildOriginPath, BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.DeterministicAssetBundle, BuildTarget.iOS);
         AssetDatabase.Refresh();
-
         CopyFilesToStreaming();
-
         AssetDatabase.Refresh();
         EditorUtility.ClearProgressBar();
-
         UnityEngine.Debug.Log("Bundle Build Done");
     }
-    #endif
+#endif
 
     [MenuItem("AssetBundle/Normal Method/Name Method/ClearAllBundleName")]
     static void ClearAssetBundleNames()
@@ -196,6 +211,23 @@ public class AssetBundleBuilder
             AssetDatabase.RemoveAssetBundleName(names[i], true);
         }
         Debug.LogError("清除完成");
+    }
+    static void SetBundleName()
+    {
+        int i = 0;
+        foreach (string path in allAssets.Keys)
+        {
+            i++;
+            if (i % 10 == 0)
+                EditorUtility.DisplayProgressBar("设置bundleName", "设置bundleName....", 1f * i / allAssets.Keys.Count);
+
+            AssetImporter importer = AssetImporter.GetAtPath(path);
+
+            if (importer && importer.assetBundleName != allAssets[path])
+            {
+                importer.assetBundleName = allAssets[path];
+            }
+        }
     }
     static void GetMainBundleName(string path, List<object> skipPathList)
     {
@@ -416,6 +448,121 @@ public class AssetBundleBuilder
         }
         EditorUtility.ClearProgressBar();
     }
+    static void GetOneName(string path, List<object> extensions, string name)
+    {
+        if (Directory.Exists(path))
+        {
+            EditorUtility.DisplayProgressBar("获取名称中", "获取名称中....", 0.0f);
+
+            DirectoryInfo dir = new DirectoryInfo(path);
+
+            if (extensions == null || extensions.Count <= 0)
+            {
+                FileInfo[] files = dir.GetFiles("*", SearchOption.AllDirectories);
+
+                for (int i = 0; i < files.Length; i++)
+                {
+                    FileInfo fileInfo = files[i];
+                    EditorUtility.DisplayProgressBar("获取名称中", "获取名称中....", 1f * i / files.Length);
+
+                    string basePath = "Assets" + fileInfo.FullName.Substring(Application.dataPath.Length);
+                    basePath = basePath.Replace('\\', '/');
+
+                    AddAsset(basePath, name);
+                }
+            }
+            else
+            {
+                foreach (var extension in extensions)
+                {
+                    FileInfo[] files = dir.GetFiles("*" + extension.ToString(), SearchOption.AllDirectories);
+
+                    for (int i = 0; i < files.Length; i++)
+                    {
+                        FileInfo fileInfo = files[i];
+                        EditorUtility.DisplayProgressBar("获取名称中", "获取名称中....", 1f * i / files.Length);
+
+                        string basePath = "Assets" + fileInfo.FullName.Substring(Application.dataPath.Length);
+                        basePath = basePath.Replace('\\', '/');
+
+                        AddAsset(basePath, name);
+                    }
+                }
+            }
+        }
+    }
+    static void ClearExtBundlName(string path, List<object> extensionList)
+    {
+        if (!Directory.Exists(path))
+        {
+            UnityEngine.Debug.Log("不存在此目录：" + path);
+            return;
+        }
+
+        if (Directory.Exists(path))
+        {
+            EditorUtility.DisplayProgressBar("清理名称", "清理名称中....", 0.0f);
+
+            DirectoryInfo dir = new DirectoryInfo(path);
+
+            if (extensionList == null || extensionList.Count <= 0)
+            {
+                FileInfo[] files = dir.GetFiles("*", SearchOption.AllDirectories);
+
+                for (int i = 0; i < files.Length; i++)
+                {
+                    FileInfo fileInfo = files[i];
+                    string basePath = "Assets" + fileInfo.FullName.Substring(Application.dataPath.Length);
+                    basePath = basePath.Replace('\\', '/');
+                    RemoveAsset(basePath);
+                    EditorUtility.DisplayProgressBar("清理名称", "清理名称中....", 1f * i / files.Length);
+                }
+            }
+            else
+            {
+                foreach (var extension in extensionList)
+                {
+                    FileInfo[] files = dir.GetFiles("*" + extension.ToString(), SearchOption.AllDirectories);
+
+                    for (int i = 0; i < files.Length; i++)
+                    {
+                        FileInfo fileInfo = files[i];
+                        string basePath = "Assets" + fileInfo.FullName.Substring(Application.dataPath.Length);
+                        basePath = basePath.Replace('\\', '/');
+                        RemoveAsset(basePath);
+                        EditorUtility.DisplayProgressBar("清理名称", "清理名称中....", 1f * i / files.Length);
+                    }
+                }
+            }
+        }
+        EditorUtility.ClearProgressBar();
+    }
+    static void ClearFileBundlName(string path, List<object> fileList)
+    {
+        if (!Directory.Exists(path) || fileList == null)
+        {
+            UnityEngine.Debug.Log("不存在此目录：" + path);
+            return;
+        }
+
+        if (Directory.Exists(path))
+        {
+            EditorUtility.DisplayProgressBar("清理名称", "清理名称中....", 0.0f);
+            DirectoryInfo dir = new DirectoryInfo(path);
+            FileInfo[] allFiles = dir.GetFiles("*", SearchOption.AllDirectories);
+            for (int i = 0; i < allFiles.Length; ++i)
+            {
+                FileInfo fileInfo = allFiles[i];
+                EditorUtility.DisplayProgressBar("清理名称", "清理名称中....", 1f * i / allFiles.Length);
+                string basePath = "Assets" + fileInfo.FullName.Substring(Application.dataPath.Length);
+                basePath = basePath.Replace('\\', '/');
+                object o = fileList.Find(x => basePath.Contains(x.ToString()));
+                if (o == null) continue;
+                RemoveAsset(basePath);
+            }
+        }
+        EditorUtility.ClearProgressBar();
+    }
     static void AddAsset(string path, string name)
     {
         if (!allAssets.ContainsKey(path))
@@ -451,7 +598,7 @@ public class AssetBundleBuilder
             var utf8WithoutBom = new System.Text.UTF8Encoding(false);
             StreamReader sr = new StreamReader(NextFile.FullName, utf8WithoutBom);
             string text = sr.ReadToEnd();
-            FileStream fs = new FileStream(Path.ChangeExtension(NextFile.FullName, "txt"), FileMode.OpenOrCreate);
+            FileStream fs = new FileStream(Path.ChangeExtension(NextFile.FullName, "txt"), FileMode.Create);
             StreamWriter sw = new StreamWriter(fs, utf8WithoutBom);
             sw.Write(text);
 
@@ -549,4 +696,6 @@ public class AssetBundleBuilder
 #endif
     }
     #endregion
+
+#endregion 
 }
