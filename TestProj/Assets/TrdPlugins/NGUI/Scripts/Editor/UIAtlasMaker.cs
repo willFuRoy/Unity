@@ -6,6 +6,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using System.IO;
 
 /// <summary>
 /// Atlas maker lets you create atlases from a bunch of small textures. It's an alternative to using the external Texture Packer.
@@ -104,7 +105,7 @@ public class UIAtlasMaker : EditorWindow
 	/// Helper function that retrieves the list of currently selected textures.
 	/// </summary>
 
-	List<Texture> GetSelectedTextures ()
+	static List<Texture> GetSelectedTextures ()
 	{
 		List<Texture> textures = new List<Texture>();
 
@@ -689,7 +690,7 @@ public class UIAtlasMaker : EditorWindow
 	/// Update the sprites within the texture atlas, preserving the sprites that have not been selected.
 	/// </summary>
 
-	void UpdateAtlas (List<Texture> textures, bool keepSprites)
+	static void UpdateAtlas (List<Texture> textures, bool keepSprites)
 	{
 		// Create a list of sprites using the collected textures
 		List<SpriteEntry> sprites = CreateSprites(textures);
@@ -1097,6 +1098,59 @@ public class UIAtlasMaker : EditorWindow
 		// Uncomment this line if you want to be able to force-sort the atlas
 		//if (NGUISettings.atlas != null && GUILayout.Button("Sort Alphabetically")) NGUISettings.atlas.SortAlphabetically();
 	}
+
+    public static void OneKeyPack(Object atlas)
+    {
+        gAtlasWindowOpended = true;
+
+        string atlasPath = AssetDatabase.GetAssetPath(atlas);
+        if (NGUISettings.atlas != atlas)
+            NGUISettings.atlas = atlas as UIAtlas;
+        try
+        {
+            atlasPath = atlasPath.Remove(0, "Assets/ArtRes/Language/".Length);
+        }
+        catch
+        {
+            Debug.LogError(atlasPath);
+        }
+        atlasPath = atlasPath.Substring(0, atlasPath.IndexOf("/") + 1);
+        atlasPath = "Assets/AtlasOriginRes/" + atlasPath + atlas.name;
+        List<Object> pics = new List<Object>();
+        if (!Directory.Exists(atlasPath))
+        {
+            Debug.LogError(atlasPath + " 路径问题");
+            return;
+        }
+        DirectoryInfo dir = new DirectoryInfo(atlasPath);
+        FileInfo[] files = dir.GetFiles("*", SearchOption.AllDirectories);
+        for (int j = 0, maxj = files.Length; j < maxj; ++j)
+        {
+            string basePath = "Assets" + files[j].FullName.Substring(Application.dataPath.Length);
+            basePath = basePath.Replace('\\', '/');
+            Object o = AssetDatabase.LoadMainAssetAtPath(basePath);
+            if (o != null)
+                pics.Add(o);
+        }
+        Selection.objects = pics.ToArray();
+
+        List<SpriteEntry> sprites = new List<SpriteEntry>();
+        ExtractSprites(NGUISettings.atlas, sprites);
+
+        for (int i = sprites.Count; i > 0;)
+        {
+            SpriteEntry ent = sprites[--i];
+            if (pics.Find(x => x.name == ent.name) == null)
+                sprites.RemoveAt(i);
+        }
+        UpdateAtlas(NGUISettings.atlas, sprites);
+
+        UpdateAtlas(GetSelectedTextures(), true);
+        AssetDatabase.Refresh();
+        NGUIEditorTools.UpgradeTexturesToSprites(NGUISettings.atlas);
+        EditorWindow.FocusWindowIfItsOpen(typeof(TestArtResTool.AtlasPackWin));
+        gAtlasWindowOpended = false;
+    }
 
     private void OnDestroy() {
         gAtlasWindowOpended = false;
